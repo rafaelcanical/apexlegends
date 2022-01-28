@@ -13,6 +13,8 @@ type Map = {
 function App() {
   // Local state
   const [loaded, setLoaded] = useState(false)
+  const [rerender, setRerender] = useState(false)
+  const [reload, setReload] = useState(false)
   const [current, setCurrent] = useState<Map>()
   const [next, setNext] = useState<Map>()
   const [ranked, setRanked] = useState<Map>()
@@ -44,10 +46,55 @@ function App() {
           setLoaded(true)
         }, 300)
       })
-  }, [])
+  }, [reload])
+
+  // Trigger after each render (here we force rerender every second)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setRerender(!rerender)
+
+      if (
+        _calculateTimeLeft(current?.end) === '00:00:00' ||
+        _calculateTimeLeft(currentArenas?.end) === '00:00:00' ||
+        _calculateTimeLeft(currentRankedArenas?.end) === '00:00:00'
+      ) {
+        setLoaded(false)
+        setReload(!reload)
+      }
+    }, 1000)
+
+    return () => clearTimeout(timer)
+  })
+
+  /**
+   * Calculate time left
+   */
+  const _calculateTimeLeft = (time: number | undefined) => {
+    if (time != null) {
+      // Time in seconds minus (current time in seconds) plus 4 seconds
+      const diffInSeconds = time - Date.now() / 1000 + 4
+
+      const hours = _addLeadingZero(Math.floor((diffInSeconds / (60 * 60)) % 24))
+      const minutes = _addLeadingZero(Math.floor((diffInSeconds / 60) % 60))
+      const seconds = _addLeadingZero(Math.floor(diffInSeconds % 60))
+
+      return `${hours}:${minutes}:${seconds}`
+    }
+
+    return ''
+  }
+
+  /**
+   * Add leading zero to a number and make it a string
+   */
+  const _addLeadingZero = (time: number): string => {
+    let newTime = '0' + time
+    return newTime.slice(-2)
+  }
 
   return (
     <div className="map-lists">
+      {rerender ? null : null}
       {loaded ? (
         <>
           {/* Battle Royale Pubs */}
@@ -55,7 +102,7 @@ function App() {
             <div className="map-row current">
               <div className="subtitle">Battle Royale Pubs</div>
               <div className="title">
-                {current.map} <span>{current.remainingTimer}</span>
+                {current.map} <span>{_calculateTimeLeft(current.end)}</span>
               </div>
               <div className="next-map">Next: {next.map}</div>
             </div>
@@ -65,9 +112,7 @@ function App() {
           {ranked != null ? (
             <div className="map-row current">
               <div className="subtitle">Battle Royale Ranked</div>
-              <div className="title">
-                {ranked.map} <span>{ranked.remainingTimer}</span>
-              </div>
+              <div className="title">{ranked.map}</div>
             </div>
           ) : null}
 
@@ -76,7 +121,7 @@ function App() {
             <div className="map-row current">
               <div className="subtitle">Arenas Pubs</div>
               <div className="title">
-                {currentArenas.map} <span>{currentArenas.remainingTimer}</span>
+                {currentArenas.map} <span>{_calculateTimeLeft(currentArenas.end)}</span>
               </div>
               <div className="next-map">Next: {nextArenas.map}</div>
             </div>
@@ -87,7 +132,7 @@ function App() {
             <div className="map-row current">
               <div className="subtitle">Arenas Ranked</div>
               <div className="title">
-                {currentRankedArenas.map} <span>{currentRankedArenas.remainingTimer}</span>
+                {currentRankedArenas.map} <span>{_calculateTimeLeft(currentRankedArenas.end)}</span>
               </div>
               <div className="next-map">Next: {nextRankedArenas.map}</div>
             </div>
